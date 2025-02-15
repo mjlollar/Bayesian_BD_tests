@@ -1,79 +1,3 @@
-Last login: Wed Feb  5 16:49:41 on ttys000
-
-The default interactive shell is now zsh.
-To update your account to use zsh, please run `chsh -s /bin/zsh`.
-For more details, please visit https://support.apple.com/kb/HT208050.
-(base) jeps-MBP-3:~ matt$ ssh mlollar@ap2001.chtc.wisc.edu
-Password: 
-Password: 
-Duo two-factor login for mlollar
-
-Enter a passcode or select one of the following options:
-
- 1. Duo Push to XXX-XXX-6700
-
-Passcode or option (1-1): 1
-Success. Logging you in...
-Success. Logging you in...
-Last login: Fri Jan  3 13:33:41 2025 from 10.134.100.1
-_____________________________________________________________________
- #####  #     # #######  #####  Issues?  Email chtc@cs.wisc.edu
-#     # #     #    #    #     # Unauthorized use prohibited by:
-#       #     #    #    #       WI Statutes: s. 947.0125
-#       #######    #    #       U.S. Code: 18 USC 1030
-#       #     #    #    #       U.S. Code: 18 USC 2510-2522
-#     # #     #    #    #     # U.S. Code: 18 USC 2701-2712
- #####  #     #    #     #####  U.S. Code: 18 USC § 1831
-For off campus ssh access use https://www.doit.wisc.edu/network/vpn/
-_____________________________________________________________________
-
-         Online office hours are available twice a week:
-            Tuesdays, 10:30am - 12pm (Central time)
-            Thursdays, 3:00 - 4:30pm (Central time)
-        Join via this link: go.wisc.edu/chtc-officehours
-     Sign in via this link: go.wisc.edu/chtc-officehours-signin
-
-     IMPORTANT ANNOUNCEMENT REGARDING RECOVERED DATA:
-     We will be removing recovered data on Feb 17 to improve performance of our /staging file
-     system. Please move (mv) or delete your recovered data (located at /recovery) before this date.
-     For full details see: https://chtc.cs.wisc.edu/uw-research-computing/data-recovery-fall2024
-Filesystem quota report
-Storage             Used (GB)    Limit (GB)    Files (#)    File Cap (#)    Quota (%)
-----------------  -----------  ------------  -----------  --------------  -----------
-/home/mlollar          416.95          1020         2103               0        40.88
-/staging/mlollar            0           100            1            1000            0
-
-[mlollar@ap2001 ~]$ ls
-apptainer_r_build.log  ci_2024              old_submit1_files
-apptainer_r_maker.sub  fake_fly_replicates  old_submit3_files
-[mlollar@ap2001 ~]$ cd ci_2024/
-[mlollar@ap2001 ci_2024]$ ls
-CI_inputs_test.txt                  incomp_mapping_CI_bidir.r
-CI_inputs.txt                       incomp_mapping_CI_bidir_v4.pl
-ci_secondstep_inputs.txt            inputs
-ci_testing_24.py                    inputs_postperl
-errors                              logs
-errors_perl                         logs_perl
-focal_test.py                       outputs
-incomp_mapping_CI_bidir_minto1.pl   power_test_windows_4.txt
-incomp_mapping_CI_bidir.pl          subs
-incomp_mapping_CI_bidir_postperl.r
-[mlollar@ap2001 ci_2024]$ cd subs/
-[mlollar@ap2001 subs]$ ls
-ci_perl_minto1.sh  ci_perl_test_minto1.sub  ci_postperl_aa8025pen.sh  ci_postperl_aa8025pen.sub  first_step
-[mlollar@ap2001 subs]$ vi ci_perl_test_minto1.sub 
-[mlollar@ap2001 subs]$ v ci_postperl_aa8025pen.sub
--bash: v: command not found
-[mlollar@ap2001 subs]$ vi ci_postperl_aa8025pen.sub
-[mlollar@ap2001 subs]$ cd ..
-[mlollar@ap2001 ci_2024]$ ls
-CI_inputs_test.txt        errors_perl                         incomp_mapping_CI_bidir.r      logs_perl
-CI_inputs.txt             focal_test.py                       incomp_mapping_CI_bidir_v4.pl  outputs
-ci_secondstep_inputs.txt  incomp_mapping_CI_bidir_minto1.pl   inputs                         power_test_windows_4.txt
-ci_testing_24.py          incomp_mapping_CI_bidir.pl          inputs_postperl                subs
-errors                    incomp_mapping_CI_bidir_postperl.r  logs
-[mlollar@ap2001 ci_2024]$ vi incomp_mapping_CI_bidir_postperl.r 
-
 #!/usr/bin/env Rscript
 library("DescTools")
 #### Running as bash script
@@ -128,4 +52,111 @@ bd_tester <- function(x, output){
 pvalues <- apply(df_bd,1,bd_tester)
 df_bd <- cbind(df_bd,pvalue = pvalues)
 
-"incomp_mapping_CI_bidir_postperl.r" 162L, 5049B                                                      14,54         Top
+##Get lowest pvalues
+lowest_p <- min(df_bd[,"pvalue"])
+lowest_mins <- df_bd$V11[df_bd$pvalue==lowest_p]
+lowest_winAs <- df_bd$V1[df_bd$pvalue==lowest_p]
+lowest_winAs <- sort(unique(lowest_winAs))
+winAL_start <- lowest_winAs[1]
+winAR_start <- lowest_winAs[length(lowest_winAs)]
+lowest_winBs <- df_bd$V2[df_bd$pvalue==lowest_p]
+lowest_winBs <- sort(unique(lowest_winBs))
+winBL_start <- lowest_winBs[1]
+winBR_start <- lowest_winBs[length(lowest_winBs)]
+
+##Add to replicate file if lowest bd has thresh=1
+if (1 %in% lowest_mins){
+  ##Get intervals
+
+  far_left <- numeric(0)
+  far_right <- numeric(0)
+  far_up <- numeric(0)
+  far_down <- numeric(0)
+
+  ##Left
+  for (windowL in lowest_winBs){
+    bool_checkL <- TRUE
+    sanity_breakL <- 1
+    l = winAL_start
+    while (isTRUE(bool_checkL)){
+      if (df_bd$V11[df_bd$V1==l & df_bd$V2==windowL]==1){
+        l = l - 1
+        sanity_breakL = sanity_breakL + 1
+        if (sanity_breakL==2000000){
+          break
+        }
+      } else {
+        far_left[length(far_left)+1] <- as.character(l)
+        bool_checkL <- FALSE
+        }
+    }
+  }
+  ##Right
+  for (windowR in lowest_winBs){
+    bool_checkR <- TRUE
+    sanity_breakR <- 1
+    r = winAR_start
+    while (isTRUE(bool_checkR)){
+      if (df_bd$V11[df_bd$V1==r & df_bd$V2==windowR]==1){
+        r = r + 1
+        sanity_breakR = sanity_breakR + 1
+        if (sanity_breakR==2000000){
+          break
+        }
+      } else {
+        far_right[length(far_right)+1] <- as.character(r)
+        bool_checkR <- FALSE
+        }
+    }
+  }
+  ##Up
+  for (windowU in lowest_winAs){
+    bool_checkU <- TRUE
+    sanity_breakU <- 1
+    u = winBL_start
+    while (isTRUE(bool_checkU)){
+      if (df_bd$V11[df_bd$V1==windowU & df_bd$V2==u]==1){
+        u = u - 1
+        sanity_breakU = sanity_breakU + 1
+        if (sanity_breakU==2000000){
+          break
+        }
+      } else {
+        far_up[length(far_up)+1] <- as.character(u)
+        bool_checkU <- FALSE
+        }
+    }
+  }
+  ##Down
+  for (windowD in lowest_winAs){
+    bool_checkD <- TRUE
+    sanity_breakD <- 1
+    d = winBR_start
+    while (isTRUE(bool_checkD)){
+      if (df_bd$V11[df_bd$V1==windowD & df_bd$V2==d]==1){
+        d = d + 1
+        sanity_breakD = sanity_breakD + 1
+        if (sanity_breakD==2000000){
+          break
+        }
+      } else {
+        far_down[length(far_down)+1] <- as.character(d)
+        bool_checkD <- FALSE
+        }
+    }
+  }
+  ##Get maximum CI values
+  winAL <- as.character(min(far_left))
+  winAR <- as.character(max(far_right))
+  winBL <- as.character(min(far_up))
+  winBR <- as.character(max(far_down))
+  #Create header if file does not exist or append to new file
+  #if (file.exists(out_file)){
+  writeLines(c(prob_s_if_ster,prob_s_if_fert,winAL,winAR,winBL,winBR),out_file)
+  #} else{
+    #writeLines(c("probS", "probF", "winAL", "winAR", "winBL", "winBR"),file=out_file,sep="\n")
+    #writeLines(c(prob_s_if_ster,prob_s_if_fert,winAL,winAR,winBL,winBR),file=out_file,append=TRUE,sep="\n")
+  #}
+} else{
+  print('Replicate did not pass lowest BD pvalue == threshold 1')
+}
